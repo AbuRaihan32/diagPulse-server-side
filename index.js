@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
 require("dotenv").config();
@@ -6,8 +7,7 @@ const port = process.env.PORT || 5000;
 
 // ! middleware
 app.use(express.json());
-
-console.log(process.env.DB_PASS, process.env.DB_USER);
+app.use(cors());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fxbdhbr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -24,6 +24,24 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const userCollection = client.db('diagPulseDB').collection('users')
+
+
+
+    // ! user Related API
+
+    app.post('/user', async(req, res)=>{
+        const user = req.body;
+        console.log(user)
+        const result = await userCollection.insertOne(user);
+        res.send(result)
+    })
+
+
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

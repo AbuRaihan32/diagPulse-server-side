@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = require('cors');
+const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
 require("dotenv").config();
@@ -25,22 +25,25 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const userCollection = client.db('diagPulseDB').collection('users')
-
-
+    const userCollection = client.db("diagPulseDB").collection("users");
 
     // ! user Related API
 
-    app.post('/user', async(req, res)=>{
-        const user = req.body;
-        console.log(user)
-        const result = await userCollection.insertOne(user);
-        res.send(result)
-    })
+    app.get("/user", async (req, res) => {
+      const email = req.query.email;
+      console.log(email)
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
 
-
-
-
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+    
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

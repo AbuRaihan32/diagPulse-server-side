@@ -26,8 +26,15 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db("diagPulseDB").collection("users");
+    const bannerCollection = client.db("diagPulseDB").collection("banners");
+    const promotionCollection = client.db("diagPulseDB").collection("promotions");
+    const recommendationCollection = client.db("diagPulseDB").collection("recommendation");
 
     // ! user Related API
+    app.get('/users', async(req, res)=>{
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    })
 
     app.get("/user", async (req, res) => {
       const email = req.query.email;
@@ -62,6 +69,20 @@ async function run() {
 
       res.send(result);
     });
+
+
+    // ! Banner Related API
+    app.get('/banners', async(req, res) =>{
+      const result = await bannerCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.get('/activeBanner', async (req, res)=>{
+      const status = req.query.status;
+      const query = {status: status};
+      const result = await bannerCollection.find(query).toArray();
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

@@ -27,15 +27,20 @@ async function run() {
 
     const userCollection = client.db("diagPulseDB").collection("users");
     const bannerCollection = client.db("diagPulseDB").collection("banners");
-    const promotionCollection = client.db("diagPulseDB").collection("promotions");
-    const recommendationCollection = client.db("diagPulseDB").collection("recommendation");
+    const promotionCollection = client
+      .db("diagPulseDB")
+      .collection("promotions");
+    const recommendationCollection = client
+      .db("diagPulseDB")
+      .collection("recommendation");
 
     // ! user Related API
-    app.get('/users', async(req, res)=>{
+    app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
-    })
+    });
 
+    // for profile
     app.get("/user", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
@@ -49,6 +54,7 @@ async function run() {
       res.send(result);
     });
 
+    // update User info by User
     app.patch("/user/:id", async (req, res) => {
       const id = req.params.id;
       const user = req.body;
@@ -70,19 +76,63 @@ async function run() {
       res.send(result);
     });
 
+    // update User role and status and role by admin
+    app.patch("/updateUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const info = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: info.role,
+          status: info.status,
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // by Admin
+    app.delete("/deleteUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // ! Banner Related API
-    app.get('/banners', async(req, res) =>{
+    app.get("/banners", async (req, res) => {
       const result = await bannerCollection.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    app.get('/activeBanner', async (req, res)=>{
+    app.get("/activeBanner", async (req, res) => {
       const status = req.query.status;
-      const query = {status: status};
+      const query = { status: status };
       const result = await bannerCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.patch("/updateBanner/:id", async (req, res) => {
+      const id = req.params.id;
+      const newBanner = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          title: newBanner.title,
+          image: newBanner.image,
+          bgImage: newBanner.bgImage,
+          text: newBanner.text,
+          couponCode: newBanner.couponCode,
+          discountRat: newBanner.discountRat,
+          expireDate: newBanner.expireDate,
+          status: newBanner.status,
+        },
+      };
+
+      const result = await bannerCollection.updateOne(filter, updatedDoc);
       res.send(result)
-    })
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

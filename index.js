@@ -33,6 +33,7 @@ async function run() {
     const recommendationCollection = client
       .db("diagPulseDB")
       .collection("recommendation");
+    const testCollection = client.db("diagPulseDB").collection("tests");
 
     // ! user Related API
     app.get("/users", async (req, res) => {
@@ -131,7 +132,7 @@ async function run() {
       };
 
       const result = await bannerCollection.updateOne(filter, updatedDoc);
-      res.send(result)
+      res.send(result);
     });
 
     app.delete("/deleteBanner/:id", async (req, res) => {
@@ -141,7 +142,54 @@ async function run() {
       res.send(result);
     });
 
-    // Send a ping to confirm a successful connection
+    app.post("/addBanner", async (req, res) => {
+      const user = req.body;
+      const result = await bannerCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // ! test related API
+    app.get("/tests", async (req, res) => {
+      const result = await testCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/tests/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await testCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.delete("/tests/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await testCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.patch("/tests/:id", async (req, res) => {
+      const id = req.params.id;
+      const newTest = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: newTest.name,
+          description: newTest.description,
+          category: newTest.category,
+          image: newTest.image,
+          sample_type: newTest.sample_type,
+          purpose: newTest.purpose,
+          results_timeFrame: newTest.results_timeFrame,
+          is_invasive: newTest.is_invasive,
+        },
+      };
+
+      const result = await testCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    //! Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"

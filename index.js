@@ -154,7 +154,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/tests/:id", async (req, res) => {
+    app.get("/test/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testCollection.findOne(query);
@@ -182,12 +182,24 @@ async function run() {
           purpose: newTest.purpose,
           results_timeFrame: newTest.results_timeFrame,
           is_invasive: newTest.is_invasive,
+          date: newTest.date
         },
       };
 
       const result = await testCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+
+    // ! recommendations
+    app.get('/recommendations', async(req, res)=>{
+      const result = await recommendationCollection.find().toArray();
+      res.send(result);
+    })
+    // ! promotions
+    app.get('/promotions', async(req, res)=>{
+      const result = await promotionCollection.find().toArray();
+      res.send(result);
+    })
 
     //! Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

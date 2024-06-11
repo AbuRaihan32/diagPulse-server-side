@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 require("dotenv").config();
 const port = process.env.PORT || 5000;
@@ -161,6 +162,12 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/addTest", async (req, res) => {
+      const test = req.body;
+      const result = await testCollection.insertOne(test);
+      res.send(result);
+    });
+
     app.delete("/tests/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -172,6 +179,7 @@ async function run() {
       const id = req.params.id;
       const newTest = req.body;
       const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
       const updatedDoc = {
         $set: {
           name: newTest.name,
@@ -180,26 +188,45 @@ async function run() {
           image: newTest.image,
           sample_type: newTest.sample_type,
           purpose: newTest.purpose,
-          results_timeFrame: newTest.results_timeFrame,
-          is_invasive: newTest.is_invasive,
-          date: newTest.date
+          price: newTest.price,
+          slot: newTest.slot,
+          date: newTest.date,
         },
       };
 
-      const result = await testCollection.updateOne(filter, updatedDoc);
+      const result = await testCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       res.send(result);
     });
 
+    // ! payment intent
+    app.post("create-payment-intent", async (req, res) => {
+      const price = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
     // ! recommendations
-    app.get('/recommendations', async(req, res)=>{
+    app.get("/recommendations", async (req, res) => {
       const result = await recommendationCollection.find().toArray();
       res.send(result);
-    })
+    });
     // ! promotions
-    app.get('/promotions', async(req, res)=>{
+    app.get("/promotions", async (req, res) => {
       const result = await promotionCollection.find().toArray();
       res.send(result);
-    })
+    });
 
     //! Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

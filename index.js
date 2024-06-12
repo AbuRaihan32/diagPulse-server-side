@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // ! middleware
@@ -28,6 +28,10 @@ async function run() {
 
     const userCollection = client.db("diagPulseDB").collection("users");
     const bannerCollection = client.db("diagPulseDB").collection("banners");
+    const paymentCollection = client.db("diagPulseDB").collection("payments");
+    const appointmentCollection = client
+      .db("diagPulseDB")
+      .collection("appointments");
     const promotionCollection = client
       .db("diagPulseDB")
       .collection("promotions");
@@ -202,9 +206,62 @@ async function run() {
       res.send(result);
     });
 
+    // ! appointments
+
+    app.get("/appointments", async (req, res) => {
+      const result = await appointmentCollection.find().toArray();
+      res.send(result);
+    });
+    
+    app.get("/appointments/search", async (req, res) => {
+      const email = req.query.email;
+      const user = await userCollection.findOne({ email });
+      if (user) {
+        const result = await appointmentCollection.find({ email }).toArray();
+        res.send(result);
+      } else{
+        res.status(404).send({message: 'user not found'})
+      }
+    });
+
+    app.post("/appointments", async (req, res) => {
+      const appoint = req.body;
+      const result = await appointmentCollection.insertOne(appoint);
+      res.send(result);
+    });
+
+    app.patch("/appointments/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: "canceled",
+        },
+      };
+
+      const result = await appointmentCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/appointments/delivery/:id", async (req, res) => {
+      const id = req.params.id;
+      const up = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          status: "delivered",
+          resultUrl:  up.resultUrl
+        },
+      };
+
+      const result = await appointmentCollection.updateOne(filter, updatedDoc, options);
+      res.send(result);
+    });
+
     // ! payment intent
-    app.post("create-payment-intent", async (req, res) => {
-      const price = req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -215,6 +272,13 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    });
+
+    // payment History
+    app.post("/paymentHistory", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
     });
 
     // ! recommendations

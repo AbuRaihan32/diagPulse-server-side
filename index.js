@@ -46,6 +46,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/singleUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
     // for profile
     app.get("/user", async (req, res) => {
       const email = req.query.email;
@@ -206,21 +213,58 @@ async function run() {
       res.send(result);
     });
 
+
+    app.patch("/testsSlotUpdate/:id", async (req, res) => {
+      const id = req.params.id;
+      const newTest = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          name: newTest.name,
+          description: newTest.description,
+          category: newTest.category,
+          image: newTest.image,
+          sample_type: newTest.sample_type,
+          purpose: newTest.purpose,
+          price: newTest.price,
+          slot: newTest.slot,
+          date: newTest.date,
+          bookedCount: newTest.bookedCount,
+        },
+      };
+
+      const result = await testCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
     // ! appointments
 
     app.get("/appointments", async (req, res) => {
       const result = await appointmentCollection.find().toArray();
       res.send(result);
     });
-    
+
+    app.get("/appointments/delivered", async (req, res) => {
+      const status = req.query.status;
+      const email = req.query.email;
+      const query = {email, status}
+      const result = await appointmentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get("/appointments/search", async (req, res) => {
       const email = req.query.email;
       const user = await userCollection.findOne({ email });
       if (user) {
         const result = await appointmentCollection.find({ email }).toArray();
         res.send(result);
-      } else{
-        res.status(404).send({message: 'user not found'})
+      } else {
+        res.status(404).send({ message: "user not found" });
       }
     });
 
@@ -251,11 +295,15 @@ async function run() {
       const updatedDoc = {
         $set: {
           status: "delivered",
-          resultUrl:  up.resultUrl
+          resultUrl: up.resultUrl,
         },
       };
 
-      const result = await appointmentCollection.updateOne(filter, updatedDoc, options);
+      const result = await appointmentCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       res.send(result);
     });
 

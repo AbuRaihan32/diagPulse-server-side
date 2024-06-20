@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+var jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
@@ -40,6 +41,15 @@ async function run() {
       .collection("recommendation");
     const testCollection = client.db("diagPulseDB").collection("tests");
 
+    // ! jwt related API
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET_KEY, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
     // ! user Related API
     app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
@@ -48,7 +58,7 @@ async function run() {
 
     app.get("/singleUser/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await userCollection.findOne(query);
       res.send(result);
     });
@@ -213,7 +223,6 @@ async function run() {
       res.send(result);
     });
 
-
     app.patch("/testsSlotUpdate/:id", async (req, res) => {
       const id = req.params.id;
       const newTest = req.body;
@@ -252,7 +261,7 @@ async function run() {
     app.get("/appointments/delivered", async (req, res) => {
       const status = req.query.status;
       const email = req.query.email;
-      const query = {email, status}
+      const query = { email, status };
       const result = await appointmentCollection.find(query).toArray();
       res.send(result);
     });
@@ -304,6 +313,13 @@ async function run() {
         updatedDoc,
         options
       );
+      res.send(result);
+    });
+
+    app.delete("/reservation/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await appointmentCollection.deleteOne(query);
       res.send(result);
     });
 

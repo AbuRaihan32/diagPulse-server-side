@@ -50,21 +50,51 @@ async function run() {
       res.send({ token });
     });
 
+    // ! Custom Middleware
+    const verifyToken = (req, res, next) => {
+      const authHeader = req.headers?.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).send({ message: "Unauthorized" });
+      }
+
+      const token = req.headers?.authorization.split(" ")[1];
+
+      if (!token) {
+        return res.status(401).send({ message: "token nai" });
+      }
+      jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "wrong token" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // ! verify Admin middleware must use after verify token
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      const isAdmin = user?.role === "Admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      next();
+    };
+
     // ! user Related API
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/singleUser/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await userCollection.findOne(query);
-      res.send(result);
-    });
-
     // for profile
-    app.get("/user", async (req, res) => {
+    app.get("/user", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const result = await userCollection.findOne(query);
@@ -78,7 +108,7 @@ async function run() {
     });
 
     // update User info by User
-    app.patch("/user/:id", async (req, res) => {
+    app.patch("/user/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const user = req.body;
 
@@ -100,7 +130,7 @@ async function run() {
     });
 
     // update User role and status and role by admin
-    app.patch("/updateUser/:id", async (req, res) => {
+    app.patch("/updateUser/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const info = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -116,7 +146,7 @@ async function run() {
     });
 
     // by Admin
-    app.delete("/deleteUser/:id", async (req, res) => {
+    app.delete("/deleteUser/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -124,7 +154,7 @@ async function run() {
     });
 
     // ! Banner Related API
-    app.get("/banners", async (req, res) => {
+    app.get("/banners", verifyToken, verifyAdmin, async (req, res) => {
       const result = await bannerCollection.find().toArray();
       res.send(result);
     });
@@ -157,14 +187,14 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/deleteBanner/:id", async (req, res) => {
+    app.delete("/deleteBanner/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await bannerCollection.deleteOne(query);
       res.send(result);
     });
 
-    app.post("/addBanner", async (req, res) => {
+    app.post("/addBanner", verifyToken, async (req, res) => {
       const user = req.body;
       const result = await bannerCollection.insertOne(user);
       res.send(result);
@@ -176,27 +206,27 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/test/:id", async (req, res) => {
+    app.get("/test/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testCollection.findOne(query);
       res.send(result);
     });
 
-    app.post("/addTest", async (req, res) => {
+    app.post("/addTest", verifyToken, verifyAdmin, async (req, res) => {
       const test = req.body;
       const result = await testCollection.insertOne(test);
       res.send(result);
     });
 
-    app.delete("/tests/:id", async (req, res) => {
+    app.delete("/tests/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testCollection.deleteOne(query);
       res.send(result);
     });
 
-    app.patch("/tests/:id", async (req, res) => {
+    app.patch("/tests/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const newTest = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -253,12 +283,12 @@ async function run() {
 
     // ! appointments
 
-    app.get("/appointments", async (req, res) => {
+    app.get("/appointments", verifyToken, verifyAdmin, async (req, res) => {
       const result = await appointmentCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/appointments/delivered", async (req, res) => {
+    app.get("/appointments/delivered", verifyToken, async (req, res) => {
       const status = req.query.status;
       const email = req.query.email;
       const query = { email, status };
@@ -266,7 +296,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/appointments/search", async (req, res) => {
+    app.get("/appointments/search", verifyToken, async (req, res) => {
       const email = req.query.email;
       const user = await userCollection.findOne({ email });
       if (user) {
@@ -296,7 +326,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/appointments/delivery/:id", async (req, res) => {
+    app.patch("/appointments/delivery/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const up = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -316,7 +346,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/reservation/:id", async (req, res) => {
+    app.delete("/reservation/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await appointmentCollection.deleteOne(query);

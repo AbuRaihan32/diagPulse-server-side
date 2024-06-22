@@ -92,23 +92,23 @@ async function run() {
       res.send(result);
     });
 
-        // ! check Is Admin
-        app.get("/users/admin", verifyToken, async (req, res) => {
-          const email = req.query.email;
-          if (email !== req.decoded.email) {
-            return res.status(403).send({ message: "forbidden Access" });
-          }
-    
-          const query = { email: email };
-          const user = await userCollection.findOne(query);
-    
-          let admin = false;
-          if (user) {
-            admin = user.role === "Admin";
-          }
-    
-          res.send(admin);
-        });
+    // ! check Is Admin
+    app.get("/users/admin", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden Access" });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      let admin = false;
+      if (user) {
+        admin = user.role === "Admin";
+      }
+
+      res.send(admin);
+    });
 
     // for profile
     app.get("/user", verifyToken, async (req, res) => {
@@ -334,7 +334,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/appointments/search", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/appointments/search", verifyToken, async (req, res) => {
       const email = req.query.email;
       const user = await userCollection.findOne({ email });
       if (user) {
@@ -343,6 +343,12 @@ async function run() {
       } else {
         res.status(404).send({ message: "user not found" });
       }
+    });
+
+    app.get("/reservation/search", async (req, res) => {
+      const name = req.query.name;
+      const result = await appointmentCollection.find({ name }).toArray();
+      res.send(result);
     });
 
     app.post("/appointments", async (req, res) => {

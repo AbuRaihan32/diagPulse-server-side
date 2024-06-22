@@ -83,7 +83,6 @@ async function run() {
       if (!isAdmin) {
         return res.status(403).send({ message: "forbidden access" });
       }
-
       next();
     };
 
@@ -92,6 +91,24 @@ async function run() {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
+
+        // ! check Is Admin
+        app.get("/users/admin", verifyToken, async (req, res) => {
+          const email = req.query.email;
+          if (email !== req.decoded.email) {
+            return res.status(403).send({ message: "forbidden Access" });
+          }
+    
+          const query = { email: email };
+          const user = await userCollection.findOne(query);
+    
+          let admin = false;
+          if (user) {
+            admin = user.role === "Admin";
+          }
+    
+          res.send(admin);
+        });
 
     // for profile
     app.get("/user", verifyToken, async (req, res) => {
@@ -146,12 +163,17 @@ async function run() {
     });
 
     // by Admin
-    app.delete("/deleteUser/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/deleteUser/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await userCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     // ! Banner Related API
     app.get("/banners", verifyToken, verifyAdmin, async (req, res) => {
@@ -204,6 +226,22 @@ async function run() {
     app.get("/tests", async (req, res) => {
       const result = await testCollection.find().toArray();
       res.send(result);
+    });
+
+    app.get("/allTests", async (req, res) => {
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      const result = await testCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/testCount", async (req, res) => {
+      const count = await testCollection.estimatedDocumentCount();
+      res.send({ count });
     });
 
     app.get("/test/:id", verifyToken, async (req, res) => {
@@ -296,7 +334,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/appointments/search", verifyToken, async (req, res) => {
+    app.get("/appointments/search", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.query.email;
       const user = await userCollection.findOne({ email });
       if (user) {
@@ -326,32 +364,42 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/appointments/delivery/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const up = req.body;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updatedDoc = {
-        $set: {
-          status: "delivered",
-          resultUrl: up.resultUrl,
-        },
-      };
+    app.patch(
+      "/appointments/delivery/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const up = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updatedDoc = {
+          $set: {
+            status: "delivered",
+            resultUrl: up.resultUrl,
+          },
+        };
 
-      const result = await appointmentCollection.updateOne(
-        filter,
-        updatedDoc,
-        options
-      );
-      res.send(result);
-    });
+        const result = await appointmentCollection.updateOne(
+          filter,
+          updatedDoc,
+          options
+        );
+        res.send(result);
+      }
+    );
 
-    app.delete("/reservation/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await appointmentCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/reservation/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await appointmentCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     // ! payment intent
     app.post("/create-payment-intent", async (req, res) => {
